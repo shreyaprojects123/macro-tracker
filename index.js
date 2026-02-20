@@ -93,23 +93,25 @@ async function analyzeImage(imageUrl) {
     return JSON.parse(cleaned);
   }
 
-async function appendToGoogleSheet(date, meals) {
-  const totals = getDailyTotals(meals);
-  const mealNames = meals.map((m) => m.meal).join(', ');
-
-  const payload = {
-    date,
-    calories: Math.round(totals.calories),
-    protein: Math.round(totals.protein),
-    carbs: Math.round(totals.carbs),
-    fat: Math.round(totals.fat),
-    fiber: Math.round(totals.fiber),
-    meals: mealNames,
-  };
-
-  await axios.post(process.env.GOOGLE_APPS_SCRIPT_URL, payload);
-  return payload;
-}
+  async function appendToGoogleSheet(date, meals, userPhone) {
+    const totals = getDailyTotals(meals);
+    const mealNames = meals.map((m) => m.meal).join(', ');
+    const cleanPhone = userPhone.replace('whatsapp:+', '');
+  
+    const payload = {
+      date,
+      calories: Math.round(totals.calories),
+      protein: Math.round(totals.protein),
+      carbs: Math.round(totals.carbs),
+      fat: Math.round(totals.fat),
+      fiber: Math.round(totals.fiber),
+      meals: mealNames,
+      userPhone: cleanPhone,
+    };
+  
+    await axios.post(process.env.GOOGLE_APPS_SCRIPT_URL, payload);
+    return payload;
+  }
 
 function formatMacros(macroData) {
   return `🍽 *${macroData.meal}*
