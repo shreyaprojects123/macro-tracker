@@ -215,12 +215,12 @@ app.post('/webhook', async (req, res) => {
         twiml.message("No meals logged today yet!");
       } else {
         try {
-          const saved = await appendToGoogleSheet(session.date, session.meals);
+          const saved = await appendToGoogleSheet(session.date, session.meals, from);
           twiml.message(`✅ Saved to Google Sheet!\n\n*${saved.date}*\n• Calories: ${saved.calories} kcal\n• Protein: ${saved.protein}g\n• Carbs: ${saved.carbs}g\n• Fat: ${saved.fat}g\n• Fiber: ${saved.fiber}g\n\nMeals: ${saved.meals}`);
         } catch (err) {
-          console.error('Sheet error:', err);
-          twiml.message('❌ Could not save to Google Sheet. Check your Apps Script URL in .env');
-        }
+            console.error('Sheet error full:', err.message, err.response?.data);
+            twiml.message(`❌ Sheet error: ${err.message}`);
+          }
       }
     }
 
@@ -292,7 +292,7 @@ cron.schedule('0 0 * * *', async () => {
   for (const [phone, session] of Object.entries(userSessions)) {
     if (session.meals.length > 0) {
       try {
-        await appendToGoogleSheet(session.date, session.meals);
+        await appendToGoogleSheet(session.date, session.meals, phone)  ;
         await sendWhatsApp(phone, `🌙 Midnight auto-save complete!\n\n${formatTotals(getDailyTotals(session.meals))}`);
         console.log(`Saved data for ${phone}`);
       } catch (err) {
