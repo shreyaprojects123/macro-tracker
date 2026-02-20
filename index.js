@@ -227,9 +227,44 @@ app.post('/webhook', async (req, res) => {
       twiml.message(`*Macro Tracker Commands:*\n\n📸 Send a photo → analyze meal\n*OK* → confirm a meal\n*protein 35* → edit a value\n*today* → see running totals\n*log today* → save to Google Sheet\n*help* → show this message`);
     }
 
-    else {
-      twiml.message('Send a meal photo to log macros, or type *help* for commands.');
-    }
+    else if (body.length > 3 && !lower.startsWith('join')) {
+        // Treat it as a text meal description
+        twiml.message('🔍 Analyzing your meal...');
+        res.type('text/xml').send(twiml.toString());
+      
+        try {
+          const result = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 500,
+            messages: [{
+              role: 'user',
+              content: `Analyze this meal description and return ONLY a valid JSON object:
+      {
+        "meal": "short meal description",
+        "calories": number,
+        "protein_g": number,
+        "carbs_g": number,
+        "fat_g": number,
+        "fiber_g": number
+      }
+      Meal: "${body}"
+      Return ONLY the JSON, no other text.`
+            }],
+          });
+      
+          const text = result.content[0].text.trim();
+          const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+          const macros = JSON.parse(cleaned);
+          session.pendingEdit = macros;
+      
+          const msg = `${formatMacros(macros)}\n\nReply *OK* to confirm, or correct values (e.g. "protein 35").`;
+          await sendWhatsApp(from, msg);
+        } catch (err) {
+          console.error('Text analysis error:', err.message);
+          await sendWhatsApp(from, `❌ Error: ${err.message}`);
+        }
+        return;
+      }
 
   } catch (err) {
     console.error('Webhook error:', err);
